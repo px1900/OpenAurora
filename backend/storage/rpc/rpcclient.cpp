@@ -485,6 +485,8 @@ rpcwrite(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 
 	Assert(seekpos < (off_t) BLCKSZ * RELSEG_SIZE);
 
+	_page.assign(buffer, BLCKSZ);
+
 	nbytes = TryRpcFileWrite(v->mdfd_vfd, _page, seekpos);
 
 	TRACE_POSTGRESQL_SMGR_MD_WRITE_DONE(forknum, blocknum,
