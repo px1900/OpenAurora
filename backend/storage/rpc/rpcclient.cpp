@@ -99,6 +99,14 @@ int32_t TryRpcFileTruncate(_File _fd, _Off_t _offset);
 
 _Off_t TryRpcFileSize(_File _fd);
 
+int32_t TryRpcFilePrefetch(_File _fd, _Off_t _offset, int32_t _amount, int32_t wait_event_info);
+
+void TryRpcFileWriteback(_File _fd, _Off_t _offset, _Off_t nbytes, int32_t wait_event_info);
+
+int32_t TryRpcUnlink(_Path& _path);
+
+int32_t TryRpcFtruncate(_File _fd, _Off_t _offset);
+
 void TryRpcInitFile(_Page& _return, _Path& _path);
 
 /*
@@ -171,6 +179,84 @@ rpcclose(SMgrRelation reln, ForkNumber forknum)
 	
 	
 }
+
+/*
+ *	rpcprefetch() -- Initiate asynchronous read of the specified block of a relation
+ */
+bool
+rpcprefetch(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum)
+{
+#ifdef USE_PREFETCH
+	off_t		seekpos;
+	MdfdVec    *v;
+
+	v = _mdfd_getseg(reln, forknum, blocknum, false,
+					 InRecovery ? EXTENSION_RETURN_NULL : EXTENSION_FAIL);
+	if (v == NULL)
+		return false;
+
+	seekpos = (off_t) BLCKSZ * (blocknum % ((BlockNumber) RELSEG_SIZE));
+
+	Assert(seekpos < (off_t) BLCKSZ * RELSEG_SIZE);
+
+	(void) TryRpcFilePrefetch(v->mdfd_vfd, seekpos, BLCKSZ, WAIT_EVENT_DATA_FILE_PREFETCH);
+#endif							/* USE_PREFETCH */
+
+	return true;
+}
+
+/*
+ * rpcwriteback() -- Tell the kernel to write pages back to storage.
+ *
+ * This accepts a range of blocks because flushing several pages at once is
+ * considerably more efficient than doing so individually.
+ */
+void
+rpcwriteback(SMgrRelation reln, ForkNumber forknum,
+			BlockNumber blocknum, BlockNumber nblocks)
+{
+	/*
+	 * Issue flush requests in as few requests as possible; have to split at
+	 * segment boundaries though, since those are actually separate files.
+	 */
+	while (nblocks > 0)
+	{
+		BlockNumber nflush = nblocks;
+		off_t		seekpos;
+		MdfdVec    *v;
+		int			segnum_start,
+					segnum_end;
+
+		v = _mdfd_getseg(reln, forknum, blocknum, true /* not used */ ,
+						 EXTENSION_RETURN_NULL);
+
+		/*
+		 * We might be flushing buffers of already removed relations, that's
+		 * ok, just ignore that case.
+		 */
+		if (!v)
+			return;
+
+		/* compute offset inside the current segment */
+		segnum_start = blocknum / RELSEG_SIZE;
+
+		/* compute number of desired writes within the current segment */
+		segnum_end = (blocknum + nblocks - 1) / RELSEG_SIZE;
+		if (segnum_start != segnum_end)
+			nflush = RELSEG_SIZE - (blocknum % ((BlockNumber) RELSEG_SIZE));
+
+		Assert(nflush >= 1);
+		Assert(nflush <= nblocks);
+
+		seekpos = (off_t) BLCKSZ * (blocknum % ((BlockNumber) RELSEG_SIZE));
+
+		TryRpcFileWriteback(v->mdfd_vfd, seekpos, (off_t) BLCKSZ * nflush, WAIT_EVENT_DATA_FILE_FLUSH);
+
+		nblocks -= nflush;
+		blocknum += nflush;
+	}
+}
+
 
 /*
  *	rpccreate() -- Create a new relation.
@@ -305,7 +391,107 @@ rpcexists(SMgrRelation reln, ForkNumber forkNum)
  */
 void
 rpcunlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo)
-{}
+{
+	/* Now do the per-fork work */
+	if (forkNum == InvalidForkNumber)
+	{
+		for (forkNum = 0; forkNum <= MAX_FORKNUM; forkNum++)
+			rpcunlinkfork(rnode, forkNum, isRedo);
+	}
+	else
+		rpcunlinkfork(rnode, forkNum, isRedo);
+}
+
+void
+rpcunlinkfork(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo)
+{
+	char	   *path;
+	_Path 		_path;
+	int			ret;
+
+	path = relpath(rnode, forkNum);
+
+	_path.assign(path);
+
+	/*
+	 * Delete or truncate the first segment.
+	 */
+	if (isRedo || forkNum != MAIN_FORKNUM || RelFileNodeBackendIsTemp(rnode))
+	{
+		/* First, forget any pending sync requests for the first segment */
+		if (!RelFileNodeBackendIsTemp(rnode))
+			//register_forget_request(rnode, forkNum, 0 /* first seg */ );
+
+		/* Next unlink the file */
+		ret = TryRpcUnlink(_path);
+		if (ret < 0 && errno != ENOENT) //May found bug because comp does not get errno from os
+			ereport(WARNING,
+					(errcode_for_file_access(),
+					 errmsg("could not remove file \"%s\": %m", path)));
+	}
+	else
+	{
+		/* truncate(2) would be easier here, but Windows hasn't got it */
+		int			fd;
+
+		fd = TryRpcOpenTransientFile(path, O_RDWR | PG_BINARY);
+		if (fd >= 0)
+		{
+			int			save_errno;
+
+			ret = TryRpcFtruncate(fd, 0);
+			save_errno = errno;
+			TryRpcCloseTransientFile(fd);
+			errno = save_errno;
+		}
+		else
+			ret = -1;
+		if (ret < 0 && errno != ENOENT)
+			ereport(WARNING,
+					(errcode_for_file_access(),
+					 errmsg("could not truncate file \"%s\": %m", path)));
+
+		/* Register request to unlink first segment later */
+		//register_unlink_segment(rnode, forkNum, 0 /* first seg */ );
+	}
+
+	/*
+	 * Delete any additional segments.
+	 */
+	if (ret >= 0)
+	{
+		char	   *segpath = (char *) palloc(strlen(path) + 12);
+		BlockNumber segno;
+
+		/*
+		 * Note that because we loop until getting ENOENT, we will correctly
+		 * remove all inactive segments as well as active ones.
+		 */
+		for (segno = 1;; segno++)
+		{
+			/*
+			 * Forget any pending sync requests for this segment before we try
+			 * to unlink.
+			 */
+			if (!RelFileNodeBackendIsTemp(rnode))
+				//register_forget_request(rnode, forkNum, segno);
+
+			sprintf(segpath, "%s.%u", path, segno);
+			if (TryRpcUnlink(segpath) < 0)
+			{
+				/* ENOENT is expected after the last segment... */
+				if (errno != ENOENT)
+					ereport(WARNING,
+							(errcode_for_file_access(),
+							 errmsg("could not remove file \"%s\": %m", segpath)));
+				break;
+			}
+		}
+		pfree(segpath);
+	}
+
+	pfree(path);
+}
 
 /*
  *	rpcextend() -- Add a block to the specified relation.
@@ -1170,6 +1356,110 @@ _Off_t TryRpcFileSize(_File _fd)
 	}while(trycount < maxcount);
 	return result;
 };
+
+int32_t TryRpcFilePrefetch(_File _fd, _Off_t _offset, int32_t _amount, int32_t wait_event_info)
+{
+	int trycount=0;
+	int maxcount=3;
+	_Off_t result;
+	do{
+		try{
+			rpctransport->open();
+			result = client->RpcFilePrefetch(_fd, _offset, _amount, wait_event_info);
+			rpctransport->close();
+			trycount=maxcount;
+		}catch(TException& tx){
+			std::cout << "ERROR: " << tx.what() << std::endl;
+			rpcsocket = std::make_shared<TSocket>("localhost", RPCPORT);
+			rpctransport = std::make_shared<TBufferedTransport>(rpcsocket);
+			rpcprotocol = std::make_shared<TBinaryProtocol>(rpctransport);
+			delete client;
+			client = new DataPageAccessClient(rpcprotocol);
+
+			trycount++;
+			printf("Try again %d\n", trycount);
+		}
+	}while(trycount < maxcount);
+	return result;
+}
+
+void TryRpcFileWriteback(_File _fd, _Off_t _offset, _Off_t nbytes, int32_t wait_event_info)
+{
+	int trycount=0;
+	int maxcount=3;
+	_Off_t result;
+	do{
+		try{
+			rpctransport->open();
+			result = client->RpcFileWriteback(_fd, _offset, nbytes, wait_event_info);
+			rpctransport->close();
+			trycount=maxcount;
+		}catch(TException& tx){
+			std::cout << "ERROR: " << tx.what() << std::endl;
+			rpcsocket = std::make_shared<TSocket>("localhost", RPCPORT);
+			rpctransport = std::make_shared<TBufferedTransport>(rpcsocket);
+			rpcprotocol = std::make_shared<TBinaryProtocol>(rpctransport);
+			delete client;
+			client = new DataPageAccessClient(rpcprotocol);
+
+			trycount++;
+			printf("Try again %d\n", trycount);
+		}
+	}while(trycount < maxcount);
+	return result;
+}
+
+int32_t TryRpcUnlink(_Path& _path)
+{
+	int trycount=0;
+	int maxcount=3;
+	_Off_t result;
+	do{
+		try{
+			rpctransport->open();
+			result = client->RpcUnlink(_path);
+			rpctransport->close();
+			trycount=maxcount;
+		}catch(TException& tx){
+			std::cout << "ERROR: " << tx.what() << std::endl;
+			rpcsocket = std::make_shared<TSocket>("localhost", RPCPORT);
+			rpctransport = std::make_shared<TBufferedTransport>(rpcsocket);
+			rpcprotocol = std::make_shared<TBinaryProtocol>(rpctransport);
+			delete client;
+			client = new DataPageAccessClient(rpcprotocol);
+
+			trycount++;
+			printf("Try again %d\n", trycount);
+		}
+	}while(trycount < maxcount);
+	return result;
+}
+
+int32_t TryRpcFtruncate(_File _fd, _Off_t _offset)
+{
+	int trycount=0;
+	int maxcount=3;
+	_Off_t result;
+	do{
+		try{
+			rpctransport->open();
+			result = client->RpcFtruncate(_fd, _offset);
+			rpctransport->close();
+			trycount=maxcount;
+		}catch(TException& tx){
+			std::cout << "ERROR: " << tx.what() << std::endl;
+			rpcsocket = std::make_shared<TSocket>("localhost", RPCPORT);
+			rpctransport = std::make_shared<TBufferedTransport>(rpcsocket);
+			rpcprotocol = std::make_shared<TBinaryProtocol>(rpctransport);
+			delete client;
+			client = new DataPageAccessClient(rpcprotocol);
+
+			trycount++;
+			printf("Try again %d\n", trycount);
+		}
+	}while(trycount < maxcount);
+	return result;
+}
 
 void TryRpcInitFile(_Page& _return, _Path& _path)
 {

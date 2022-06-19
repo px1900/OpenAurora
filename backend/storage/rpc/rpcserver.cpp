@@ -120,6 +120,26 @@ class DataPageAccessHandler : virtual public DataPageAccessIf {
     return FileSize(_fd);
   }
 
+  int32_t RpcFilePrefetch(const _File _fd, const _Off_t _offset, const int32_t _amount, const int32_t wait_event_info) {
+    // Your implementation goes here
+    std::cout << "RpcFilePrefetch" << std::endl;
+  }
+
+  void RpcFileWriteback(const _File _fd, const _Off_t _offset, const _Off_t nbytes, const int32_t wait_event_info) {
+    // Your implementation goes here
+    std::cout << "RpcFileWriteback" << std::endl;
+  }
+
+  int32_t RpcUnlink(const _Path& _path) {
+    // Your implementation goes here
+    std::cout << "RpcUnlink" << std::endl;
+  }
+
+  int32_t RpcFtruncate(const _File _fd, const _Off_t _offset) {
+    // Your implementation goes here
+    std::cout << "RpcFtruncate" << std::endl;
+  }
+
   void RpcInitFile(_Page& _return, const _Path& _path) {
     _Path datadir(DataDir);
     _Path mpath = datadir + "/" + _path;

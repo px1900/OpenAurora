@@ -45,6 +45,10 @@ class DataPageAccessIf {
   virtual void RpcFileRead(_Page& _return, const _File _fd, const _Off_t _seekpos) = 0;
   virtual int32_t RpcFileTruncate(const _File _fd, const _Off_t _offset) = 0;
   virtual _Off_t RpcFileSize(const _File _fd) = 0;
+  virtual int32_t RpcFilePrefetch(const _File _fd, const _Off_t _offset, const int32_t _amount, const int32_t wait_event_info) = 0;
+  virtual void RpcFileWriteback(const _File _fd, const _Off_t _offset, const _Off_t nbytes, const int32_t wait_event_info) = 0;
+  virtual int32_t RpcUnlink(const _Path& _path) = 0;
+  virtual int32_t RpcFtruncate(const _File _fd, const _Off_t _offset) = 0;
   virtual void RpcInitFile(_Page& _return, const _Path& _path) = 0;
   virtual _File RpcOpenTransientFile(const _Path& _filename, const int32_t _fileflags) = 0;
   virtual void RpcCloseTransientFile(const _File _fd) = 0;
@@ -112,6 +116,21 @@ class DataPageAccessNull : virtual public DataPageAccessIf {
   }
   _Off_t RpcFileSize(const _File /* _fd */) {
     _Off_t _return = 0;
+    return _return;
+  }
+  int32_t RpcFilePrefetch(const _File /* _fd */, const _Off_t /* _offset */, const int32_t /* _amount */, const int32_t /* wait_event_info */) {
+    int32_t _return = 0;
+    return _return;
+  }
+  void RpcFileWriteback(const _File /* _fd */, const _Off_t /* _offset */, const _Off_t /* nbytes */, const int32_t /* wait_event_info */) {
+    return;
+  }
+  int32_t RpcUnlink(const _Path& /* _path */) {
+    int32_t _return = 0;
+    return _return;
+  }
+  int32_t RpcFtruncate(const _File /* _fd */, const _Off_t /* _offset */) {
+    int32_t _return = 0;
     return _return;
   }
   void RpcInitFile(_Page& /* _return */, const _Path& /* _path */) {
@@ -981,6 +1000,453 @@ class DataPageAccess_RpcFileSize_presult {
 
 };
 
+typedef struct _DataPageAccess_RpcFilePrefetch_args__isset {
+  _DataPageAccess_RpcFilePrefetch_args__isset() : _fd(false), _offset(false), _amount(false), wait_event_info(false) {}
+  bool _fd :1;
+  bool _offset :1;
+  bool _amount :1;
+  bool wait_event_info :1;
+} _DataPageAccess_RpcFilePrefetch_args__isset;
+
+class DataPageAccess_RpcFilePrefetch_args {
+ public:
+
+  DataPageAccess_RpcFilePrefetch_args(const DataPageAccess_RpcFilePrefetch_args&);
+  DataPageAccess_RpcFilePrefetch_args& operator=(const DataPageAccess_RpcFilePrefetch_args&);
+  DataPageAccess_RpcFilePrefetch_args() : _fd(0), _offset(0), _amount(0), wait_event_info(0) {
+  }
+
+  virtual ~DataPageAccess_RpcFilePrefetch_args() noexcept;
+  _File _fd;
+  _Off_t _offset;
+  int32_t _amount;
+  int32_t wait_event_info;
+
+  _DataPageAccess_RpcFilePrefetch_args__isset __isset;
+
+  void __set__fd(const _File val);
+
+  void __set__offset(const _Off_t val);
+
+  void __set__amount(const int32_t val);
+
+  void __set_wait_event_info(const int32_t val);
+
+  bool operator == (const DataPageAccess_RpcFilePrefetch_args & rhs) const
+  {
+    if (!(_fd == rhs._fd))
+      return false;
+    if (!(_offset == rhs._offset))
+      return false;
+    if (!(_amount == rhs._amount))
+      return false;
+    if (!(wait_event_info == rhs.wait_event_info))
+      return false;
+    return true;
+  }
+  bool operator != (const DataPageAccess_RpcFilePrefetch_args &rhs) const {
+    return !(*this == rhs);
+  }
+
+  bool operator < (const DataPageAccess_RpcFilePrefetch_args & ) const;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+
+class DataPageAccess_RpcFilePrefetch_pargs {
+ public:
+
+
+  virtual ~DataPageAccess_RpcFilePrefetch_pargs() noexcept;
+  const _File* _fd;
+  const _Off_t* _offset;
+  const int32_t* _amount;
+  const int32_t* wait_event_info;
+
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+typedef struct _DataPageAccess_RpcFilePrefetch_result__isset {
+  _DataPageAccess_RpcFilePrefetch_result__isset() : success(false) {}
+  bool success :1;
+} _DataPageAccess_RpcFilePrefetch_result__isset;
+
+class DataPageAccess_RpcFilePrefetch_result {
+ public:
+
+  DataPageAccess_RpcFilePrefetch_result(const DataPageAccess_RpcFilePrefetch_result&);
+  DataPageAccess_RpcFilePrefetch_result& operator=(const DataPageAccess_RpcFilePrefetch_result&);
+  DataPageAccess_RpcFilePrefetch_result() : success(0) {
+  }
+
+  virtual ~DataPageAccess_RpcFilePrefetch_result() noexcept;
+  int32_t success;
+
+  _DataPageAccess_RpcFilePrefetch_result__isset __isset;
+
+  void __set_success(const int32_t val);
+
+  bool operator == (const DataPageAccess_RpcFilePrefetch_result & rhs) const
+  {
+    if (!(success == rhs.success))
+      return false;
+    return true;
+  }
+  bool operator != (const DataPageAccess_RpcFilePrefetch_result &rhs) const {
+    return !(*this == rhs);
+  }
+
+  bool operator < (const DataPageAccess_RpcFilePrefetch_result & ) const;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+typedef struct _DataPageAccess_RpcFilePrefetch_presult__isset {
+  _DataPageAccess_RpcFilePrefetch_presult__isset() : success(false) {}
+  bool success :1;
+} _DataPageAccess_RpcFilePrefetch_presult__isset;
+
+class DataPageAccess_RpcFilePrefetch_presult {
+ public:
+
+
+  virtual ~DataPageAccess_RpcFilePrefetch_presult() noexcept;
+  int32_t* success;
+
+  _DataPageAccess_RpcFilePrefetch_presult__isset __isset;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+
+};
+
+typedef struct _DataPageAccess_RpcFileWriteback_args__isset {
+  _DataPageAccess_RpcFileWriteback_args__isset() : _fd(false), _offset(false), nbytes(false), wait_event_info(false) {}
+  bool _fd :1;
+  bool _offset :1;
+  bool nbytes :1;
+  bool wait_event_info :1;
+} _DataPageAccess_RpcFileWriteback_args__isset;
+
+class DataPageAccess_RpcFileWriteback_args {
+ public:
+
+  DataPageAccess_RpcFileWriteback_args(const DataPageAccess_RpcFileWriteback_args&);
+  DataPageAccess_RpcFileWriteback_args& operator=(const DataPageAccess_RpcFileWriteback_args&);
+  DataPageAccess_RpcFileWriteback_args() : _fd(0), _offset(0), nbytes(0), wait_event_info(0) {
+  }
+
+  virtual ~DataPageAccess_RpcFileWriteback_args() noexcept;
+  _File _fd;
+  _Off_t _offset;
+  _Off_t nbytes;
+  int32_t wait_event_info;
+
+  _DataPageAccess_RpcFileWriteback_args__isset __isset;
+
+  void __set__fd(const _File val);
+
+  void __set__offset(const _Off_t val);
+
+  void __set_nbytes(const _Off_t val);
+
+  void __set_wait_event_info(const int32_t val);
+
+  bool operator == (const DataPageAccess_RpcFileWriteback_args & rhs) const
+  {
+    if (!(_fd == rhs._fd))
+      return false;
+    if (!(_offset == rhs._offset))
+      return false;
+    if (!(nbytes == rhs.nbytes))
+      return false;
+    if (!(wait_event_info == rhs.wait_event_info))
+      return false;
+    return true;
+  }
+  bool operator != (const DataPageAccess_RpcFileWriteback_args &rhs) const {
+    return !(*this == rhs);
+  }
+
+  bool operator < (const DataPageAccess_RpcFileWriteback_args & ) const;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+
+class DataPageAccess_RpcFileWriteback_pargs {
+ public:
+
+
+  virtual ~DataPageAccess_RpcFileWriteback_pargs() noexcept;
+  const _File* _fd;
+  const _Off_t* _offset;
+  const _Off_t* nbytes;
+  const int32_t* wait_event_info;
+
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+
+class DataPageAccess_RpcFileWriteback_result {
+ public:
+
+  DataPageAccess_RpcFileWriteback_result(const DataPageAccess_RpcFileWriteback_result&);
+  DataPageAccess_RpcFileWriteback_result& operator=(const DataPageAccess_RpcFileWriteback_result&);
+  DataPageAccess_RpcFileWriteback_result() {
+  }
+
+  virtual ~DataPageAccess_RpcFileWriteback_result() noexcept;
+
+  bool operator == (const DataPageAccess_RpcFileWriteback_result & /* rhs */) const
+  {
+    return true;
+  }
+  bool operator != (const DataPageAccess_RpcFileWriteback_result &rhs) const {
+    return !(*this == rhs);
+  }
+
+  bool operator < (const DataPageAccess_RpcFileWriteback_result & ) const;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+
+class DataPageAccess_RpcFileWriteback_presult {
+ public:
+
+
+  virtual ~DataPageAccess_RpcFileWriteback_presult() noexcept;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+
+};
+
+typedef struct _DataPageAccess_RpcUnlink_args__isset {
+  _DataPageAccess_RpcUnlink_args__isset() : _path(false) {}
+  bool _path :1;
+} _DataPageAccess_RpcUnlink_args__isset;
+
+class DataPageAccess_RpcUnlink_args {
+ public:
+
+  DataPageAccess_RpcUnlink_args(const DataPageAccess_RpcUnlink_args&);
+  DataPageAccess_RpcUnlink_args& operator=(const DataPageAccess_RpcUnlink_args&);
+  DataPageAccess_RpcUnlink_args() : _path() {
+  }
+
+  virtual ~DataPageAccess_RpcUnlink_args() noexcept;
+  _Path _path;
+
+  _DataPageAccess_RpcUnlink_args__isset __isset;
+
+  void __set__path(const _Path& val);
+
+  bool operator == (const DataPageAccess_RpcUnlink_args & rhs) const
+  {
+    if (!(_path == rhs._path))
+      return false;
+    return true;
+  }
+  bool operator != (const DataPageAccess_RpcUnlink_args &rhs) const {
+    return !(*this == rhs);
+  }
+
+  bool operator < (const DataPageAccess_RpcUnlink_args & ) const;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+
+class DataPageAccess_RpcUnlink_pargs {
+ public:
+
+
+  virtual ~DataPageAccess_RpcUnlink_pargs() noexcept;
+  const _Path* _path;
+
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+typedef struct _DataPageAccess_RpcUnlink_result__isset {
+  _DataPageAccess_RpcUnlink_result__isset() : success(false) {}
+  bool success :1;
+} _DataPageAccess_RpcUnlink_result__isset;
+
+class DataPageAccess_RpcUnlink_result {
+ public:
+
+  DataPageAccess_RpcUnlink_result(const DataPageAccess_RpcUnlink_result&);
+  DataPageAccess_RpcUnlink_result& operator=(const DataPageAccess_RpcUnlink_result&);
+  DataPageAccess_RpcUnlink_result() : success(0) {
+  }
+
+  virtual ~DataPageAccess_RpcUnlink_result() noexcept;
+  int32_t success;
+
+  _DataPageAccess_RpcUnlink_result__isset __isset;
+
+  void __set_success(const int32_t val);
+
+  bool operator == (const DataPageAccess_RpcUnlink_result & rhs) const
+  {
+    if (!(success == rhs.success))
+      return false;
+    return true;
+  }
+  bool operator != (const DataPageAccess_RpcUnlink_result &rhs) const {
+    return !(*this == rhs);
+  }
+
+  bool operator < (const DataPageAccess_RpcUnlink_result & ) const;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+typedef struct _DataPageAccess_RpcUnlink_presult__isset {
+  _DataPageAccess_RpcUnlink_presult__isset() : success(false) {}
+  bool success :1;
+} _DataPageAccess_RpcUnlink_presult__isset;
+
+class DataPageAccess_RpcUnlink_presult {
+ public:
+
+
+  virtual ~DataPageAccess_RpcUnlink_presult() noexcept;
+  int32_t* success;
+
+  _DataPageAccess_RpcUnlink_presult__isset __isset;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+
+};
+
+typedef struct _DataPageAccess_RpcFtruncate_args__isset {
+  _DataPageAccess_RpcFtruncate_args__isset() : _fd(false), _offset(false) {}
+  bool _fd :1;
+  bool _offset :1;
+} _DataPageAccess_RpcFtruncate_args__isset;
+
+class DataPageAccess_RpcFtruncate_args {
+ public:
+
+  DataPageAccess_RpcFtruncate_args(const DataPageAccess_RpcFtruncate_args&);
+  DataPageAccess_RpcFtruncate_args& operator=(const DataPageAccess_RpcFtruncate_args&);
+  DataPageAccess_RpcFtruncate_args() : _fd(0), _offset(0) {
+  }
+
+  virtual ~DataPageAccess_RpcFtruncate_args() noexcept;
+  _File _fd;
+  _Off_t _offset;
+
+  _DataPageAccess_RpcFtruncate_args__isset __isset;
+
+  void __set__fd(const _File val);
+
+  void __set__offset(const _Off_t val);
+
+  bool operator == (const DataPageAccess_RpcFtruncate_args & rhs) const
+  {
+    if (!(_fd == rhs._fd))
+      return false;
+    if (!(_offset == rhs._offset))
+      return false;
+    return true;
+  }
+  bool operator != (const DataPageAccess_RpcFtruncate_args &rhs) const {
+    return !(*this == rhs);
+  }
+
+  bool operator < (const DataPageAccess_RpcFtruncate_args & ) const;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+
+class DataPageAccess_RpcFtruncate_pargs {
+ public:
+
+
+  virtual ~DataPageAccess_RpcFtruncate_pargs() noexcept;
+  const _File* _fd;
+  const _Off_t* _offset;
+
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+typedef struct _DataPageAccess_RpcFtruncate_result__isset {
+  _DataPageAccess_RpcFtruncate_result__isset() : success(false) {}
+  bool success :1;
+} _DataPageAccess_RpcFtruncate_result__isset;
+
+class DataPageAccess_RpcFtruncate_result {
+ public:
+
+  DataPageAccess_RpcFtruncate_result(const DataPageAccess_RpcFtruncate_result&);
+  DataPageAccess_RpcFtruncate_result& operator=(const DataPageAccess_RpcFtruncate_result&);
+  DataPageAccess_RpcFtruncate_result() : success(0) {
+  }
+
+  virtual ~DataPageAccess_RpcFtruncate_result() noexcept;
+  int32_t success;
+
+  _DataPageAccess_RpcFtruncate_result__isset __isset;
+
+  void __set_success(const int32_t val);
+
+  bool operator == (const DataPageAccess_RpcFtruncate_result & rhs) const
+  {
+    if (!(success == rhs.success))
+      return false;
+    return true;
+  }
+  bool operator != (const DataPageAccess_RpcFtruncate_result &rhs) const {
+    return !(*this == rhs);
+  }
+
+  bool operator < (const DataPageAccess_RpcFtruncate_result & ) const;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+typedef struct _DataPageAccess_RpcFtruncate_presult__isset {
+  _DataPageAccess_RpcFtruncate_presult__isset() : success(false) {}
+  bool success :1;
+} _DataPageAccess_RpcFtruncate_presult__isset;
+
+class DataPageAccess_RpcFtruncate_presult {
+ public:
+
+
+  virtual ~DataPageAccess_RpcFtruncate_presult() noexcept;
+  int32_t* success;
+
+  _DataPageAccess_RpcFtruncate_presult__isset __isset;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+
+};
+
 typedef struct _DataPageAccess_RpcInitFile_args__isset {
   _DataPageAccess_RpcInitFile_args__isset() : _path(false) {}
   bool _path :1;
@@ -1605,6 +2071,18 @@ class DataPageAccessClient : virtual public DataPageAccessIf {
   _Off_t RpcFileSize(const _File _fd);
   void send_RpcFileSize(const _File _fd);
   _Off_t recv_RpcFileSize();
+  int32_t RpcFilePrefetch(const _File _fd, const _Off_t _offset, const int32_t _amount, const int32_t wait_event_info);
+  void send_RpcFilePrefetch(const _File _fd, const _Off_t _offset, const int32_t _amount, const int32_t wait_event_info);
+  int32_t recv_RpcFilePrefetch();
+  void RpcFileWriteback(const _File _fd, const _Off_t _offset, const _Off_t nbytes, const int32_t wait_event_info);
+  void send_RpcFileWriteback(const _File _fd, const _Off_t _offset, const _Off_t nbytes, const int32_t wait_event_info);
+  void recv_RpcFileWriteback();
+  int32_t RpcUnlink(const _Path& _path);
+  void send_RpcUnlink(const _Path& _path);
+  int32_t recv_RpcUnlink();
+  int32_t RpcFtruncate(const _File _fd, const _Off_t _offset);
+  void send_RpcFtruncate(const _File _fd, const _Off_t _offset);
+  int32_t recv_RpcFtruncate();
   void RpcInitFile(_Page& _return, const _Path& _path);
   void send_RpcInitFile(const _Path& _path);
   void recv_RpcInitFile(_Page& _return);
@@ -1650,6 +2128,10 @@ class DataPageAccessProcessor : public ::apache::thrift::TDispatchProcessor {
   void process_RpcFileRead(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
   void process_RpcFileTruncate(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
   void process_RpcFileSize(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
+  void process_RpcFilePrefetch(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
+  void process_RpcFileWriteback(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
+  void process_RpcUnlink(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
+  void process_RpcFtruncate(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
   void process_RpcInitFile(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
   void process_RpcOpenTransientFile(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
   void process_RpcCloseTransientFile(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
@@ -1667,6 +2149,10 @@ class DataPageAccessProcessor : public ::apache::thrift::TDispatchProcessor {
     processMap_["RpcFileRead"] = &DataPageAccessProcessor::process_RpcFileRead;
     processMap_["RpcFileTruncate"] = &DataPageAccessProcessor::process_RpcFileTruncate;
     processMap_["RpcFileSize"] = &DataPageAccessProcessor::process_RpcFileSize;
+    processMap_["RpcFilePrefetch"] = &DataPageAccessProcessor::process_RpcFilePrefetch;
+    processMap_["RpcFileWriteback"] = &DataPageAccessProcessor::process_RpcFileWriteback;
+    processMap_["RpcUnlink"] = &DataPageAccessProcessor::process_RpcUnlink;
+    processMap_["RpcFtruncate"] = &DataPageAccessProcessor::process_RpcFtruncate;
     processMap_["RpcInitFile"] = &DataPageAccessProcessor::process_RpcInitFile;
     processMap_["RpcOpenTransientFile"] = &DataPageAccessProcessor::process_RpcOpenTransientFile;
     processMap_["RpcCloseTransientFile"] = &DataPageAccessProcessor::process_RpcCloseTransientFile;
@@ -1781,6 +2267,42 @@ class DataPageAccessMultiface : virtual public DataPageAccessIf {
       ifaces_[i]->RpcFileSize(_fd);
     }
     return ifaces_[i]->RpcFileSize(_fd);
+  }
+
+  int32_t RpcFilePrefetch(const _File _fd, const _Off_t _offset, const int32_t _amount, const int32_t wait_event_info) {
+    size_t sz = ifaces_.size();
+    size_t i = 0;
+    for (; i < (sz - 1); ++i) {
+      ifaces_[i]->RpcFilePrefetch(_fd, _offset, _amount, wait_event_info);
+    }
+    return ifaces_[i]->RpcFilePrefetch(_fd, _offset, _amount, wait_event_info);
+  }
+
+  void RpcFileWriteback(const _File _fd, const _Off_t _offset, const _Off_t nbytes, const int32_t wait_event_info) {
+    size_t sz = ifaces_.size();
+    size_t i = 0;
+    for (; i < (sz - 1); ++i) {
+      ifaces_[i]->RpcFileWriteback(_fd, _offset, nbytes, wait_event_info);
+    }
+    ifaces_[i]->RpcFileWriteback(_fd, _offset, nbytes, wait_event_info);
+  }
+
+  int32_t RpcUnlink(const _Path& _path) {
+    size_t sz = ifaces_.size();
+    size_t i = 0;
+    for (; i < (sz - 1); ++i) {
+      ifaces_[i]->RpcUnlink(_path);
+    }
+    return ifaces_[i]->RpcUnlink(_path);
+  }
+
+  int32_t RpcFtruncate(const _File _fd, const _Off_t _offset) {
+    size_t sz = ifaces_.size();
+    size_t i = 0;
+    for (; i < (sz - 1); ++i) {
+      ifaces_[i]->RpcFtruncate(_fd, _offset);
+    }
+    return ifaces_[i]->RpcFtruncate(_fd, _offset);
   }
 
   void RpcInitFile(_Page& _return, const _Path& _path) {
@@ -1908,6 +2430,18 @@ class DataPageAccessConcurrentClient : virtual public DataPageAccessIf {
   _Off_t RpcFileSize(const _File _fd);
   int32_t send_RpcFileSize(const _File _fd);
   _Off_t recv_RpcFileSize(const int32_t seqid);
+  int32_t RpcFilePrefetch(const _File _fd, const _Off_t _offset, const int32_t _amount, const int32_t wait_event_info);
+  int32_t send_RpcFilePrefetch(const _File _fd, const _Off_t _offset, const int32_t _amount, const int32_t wait_event_info);
+  int32_t recv_RpcFilePrefetch(const int32_t seqid);
+  void RpcFileWriteback(const _File _fd, const _Off_t _offset, const _Off_t nbytes, const int32_t wait_event_info);
+  int32_t send_RpcFileWriteback(const _File _fd, const _Off_t _offset, const _Off_t nbytes, const int32_t wait_event_info);
+  void recv_RpcFileWriteback(const int32_t seqid);
+  int32_t RpcUnlink(const _Path& _path);
+  int32_t send_RpcUnlink(const _Path& _path);
+  int32_t recv_RpcUnlink(const int32_t seqid);
+  int32_t RpcFtruncate(const _File _fd, const _Off_t _offset);
+  int32_t send_RpcFtruncate(const _File _fd, const _Off_t _offset);
+  int32_t recv_RpcFtruncate(const int32_t seqid);
   void RpcInitFile(_Page& _return, const _Path& _path);
   int32_t send_RpcInitFile(const _Path& _path);
   void recv_RpcInitFile(_Page& _return, const int32_t seqid);

@@ -40,11 +40,17 @@ extern void rpcunlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo)
 extern void rpcextend(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 		 char *buffer, bool skipFsync);
 
+extern bool rpcprefetch(SMgrRelation reln, ForkNumber forknum,
+		BlockNumber blocknum);
+
 extern void rpcread(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 	   char *buffer);
 
 extern void rpcwrite(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 		char *buffer, bool skipFsync);
+
+extern void rpcwriteback(SMgrRelation reln, ForkNumber forknum,
+		BlockNumber blocknum, BlockNumber nblocks);
 
 extern BlockNumber rpcnblocks(SMgrRelation reln, ForkNumber forknum);
 

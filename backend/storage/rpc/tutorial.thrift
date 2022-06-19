@@ -109,6 +109,14 @@ service DataPageAccess {
 
    _Off_t RpcFileSize(1:_File _fd),
 
+   i32 RpcFilePrefetch(1:_File _fd, 2:_Off_t _offset, 3:i32 _amount, 4:i32 wait_event_info),
+
+   void RpcFileWriteback(1:_File _fd, 2:_Off_t _offset, 3:_Off_t nbytes, 4:i32 wait_event_info),
+
+   i32 RpcUnlink(1:_Path _path),
+
+   i32 RpcFtruncate(1:_File _fd, 2:_Off_t _offset),
+
    _Page RpcInitFile(1:_Path _path),
 
    _File RpcOpenTransientFile(1:_Path _filename, 2:i32 _fileflags),
